@@ -40,19 +40,32 @@ var con = mysql.createConnection({
   insecureAuth: DB_INFO.insecureAuth
 });
 
+const table = ["price_1min", "price_1hour"];
+
 app.get('/test', (req, res) => {
-    res.send(sendData());
+  
+  const term = req.query.term;
+  var selectedTable;
+  
+  if(term == "min"){
+      selectedTable = table[0];
+  }else if(term == "hour"){
+      selectedTable = table[1];
+  }else{
+      res.status(404).send("Error");
+  }
+  
+  var sql = "SELECT * from " + selectedTable + " WHERE date BETWEEN '2019-09-29 00:00:01' AND '2019-09-30 00:00:00'";
+  
+  console.log(sql)
+  con.query(sql, function(err, result){
+      if(err){
+        res.status(500).send("Error");
+      }
+      res.send(JSON.stringify({"data": result}))
+    });
+    
 });
-
-function sendData(){
-  const file = 'data.csv';
-  var data = fs.readFileSync(file);
-
-  var res = {'data': csvSync(data)};
-  var json = JSON.stringify(res);
-
-  return json;
-}
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
