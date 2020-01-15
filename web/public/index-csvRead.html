@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+    body {
+        font: 10px sans-serif;
+    }
+
+    text {
+        fill: #000;
+    }
+
+    button {
+        position: absolute;
+        right: 20px;
+        top: 440px;
+        display: none;
+    }
+
+    path.candle {
+        stroke: #000000;
+    }
+
+    path.candle.body {
+        stroke-width: 0;
+    }
+
+    path.candle.up {
+        fill: #00AA00;
+        stroke: #00AA00;
+    }
+
+    path.candle.down {
+        fill: #FF0000;
+        stroke: #FF0000;
+    }
+
+    .crosshair {
+        cursor: crosshair;
+    }
+
+    .crosshair path.wire {
+        stroke: #DDDDDD;
+        stroke-dasharray: 1, 1;
+    }
+
+    .crosshair .axisannotation path {
+        fill: #DDDDDD;
+        
+    }
+
+    .x.annotation path {
+        fill: #DDD80E;
+    }
+    
+
+</style>
+<body>
+<!--<button>Update</button>-->
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="http://techanjs.org/techan.min.js"></script>
+<script>
+    
+    var dim = {
+            width: 960, height: 500,
+            margin: {top: 50, right: 20, bottom: 50, left: 80},
+            ohlc: {height: 400},
+            indicator: {height: 50, padding: 5}
+            };
+    
+    dim.plot = {
+            width: dim.width - dim.margin.left - dim.margin.right,
+            height: dim.height - dim.margin.top - dim.margin.bottom
+    }
+    dim.indicator.top = dim.ohlc.height + dim.indicator.padding;
+    dim.indicator.bottom = dim.indicator.top + dim.indicator.height + dim.indicator.padding;
+
+    var parseDate = d3.timeParse("%Y-%m-%d %H:%M");
+
+    var x = techan.scale.financetime()
+            .range([0, dim.plot.width]);
+
+    var y = d3.scaleLinear()
+            .range([dim.ohlc.height, 0]);
+
+    var yVolume = d3.scaleLinear()
+                  .range([y(0), y(0.2)]);
+  
+    var candlestick = techan.plot.candlestick()
+            .xScale(x)
+            .yScale(y);
+
+    var xAxis = d3.axisBottom(x)
+                .scale(x)
+                //.tickFormat(d3.timeFormat("%H:%M"))
+                //.ticks(10);
+
+    var yAxis = d3.axisLeft(y)
+                .scale(y)
+                ;
+
+    var volume = techan.plot.volume()
+                //.accessor(candlestick.accessor())
+                .xScale(x)
+                .yScale(yVolume);
+
+    var volumeAxis = d3.axisRight(yVolume)
+                     .ticks(3)
+                     .tickFormat(d3.format(",.3s"));
+
+       
+    var timeAnnotation = techan.plot.axisannotation()
+                         .axis(xAxis)
+                         .orient('bottom')
+                         //.accessor(candlestick.accessor().d)
+                         .format(d3.timeFormat('%H:%m'))
+                         .translate([0,dim.height])
+                         .width(65);
+
+    var ohlcAnnotation = techan.plot.axisannotation()
+                         .axis(yAxis)
+                         .orient('left')
+                         .format(d3.format(',.2f'))
+                         //.translate([x(0), 0])
+
+    var volumeAnnotation = techan.plot.axisannotation()
+                            .axis(volumeAxis)
+                            .orient('right')
+                            .width(35)
+
+    var ohlcCrosshair = techan.plot.crosshair()
+                         .xScale(timeAnnotation.axis().scale())
+                         .yScale(ohlcAnnotation.axis().scale())
+                         .xAnnotation(timeAnnotation)
+                         .yAnnotation([ohlcAnnotation, volumeAnnotation])
+                         .verticalWireRange([0, dim.plot.height])
+                         .on("move", move);                       
+
+    var svg = d3.select("body").append("svg")
+            .attr("width", dim.width + dim.margin.left + dim.margin.right)
+            .attr("height", dim.height + dim.margin.top + dim.margin.bottom);
+   
+    var defs = svg.append("defs")
+
+    defs.append("clipPath")
+        .attr("id", "ohlcClip")
+        .append("rect")
+            .attr("x", 0)
+            .attr("y", 0)
+            .attr("width", dim.plot.width)
+            .attr("height", dim.ohlc.height);
+
+    svg = svg.append("g")
+            .attr("transform", "translate(" + dim.margin.left + "," + dim.margin.top + ")");
+    
+    svg.append("text")
+       .attr("class", "symbol")
+       .attr("x", 30)
+       .text("BTC/USD");
+
+
+    var ohlcSelection = svg.append("g")
+                .attr("class", "ohlc")
+                .attr("transform", "translate(0,0)");
+    
+    ohlcSelection.append("g")
+                    .attr("class", "axis")
+                    .attr("transform", "translate(" + x(0) + ",0)")
+                 .append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("x", 20)
+                    .attr("y", 10)
+                    .attr("dy", ".71em")
+                    .style("text-anchor", "end")
+                    .text("price ($)");
+
+    var coordsText = svg.append("text")
+                     .style("text-anchor", "end")
+                     .attr("x", 400)
+                     .attr("y", 0)
+
+    var ohlcData;
+
+    d3.csv("data.csv", function(error, data) {
+        
+        var cAccessor = candlestick.accessor();
+        var vAccessor = volume.accessor();
+
+        data = data.slice(0,data.length).map(function(d) {
+            
+            return {
+                date: parseDate(d.time),
+                open: +d.open,
+                high: +d.high,
+                low: +d.low,
+                close: +d.close,
+                volume: +d.volume
+            };
+        }).sort(function(a, b) { return d3.ascending(cAccessor.d(a), cAccessor.d(b)); });
+        
+
+        x.domain(data.map(cAccessor.d));
+        y.domain(techan.scale.plot.ohlc(data, cAccessor).domain());
+        yVolume.domain(techan.scale.plot.volume(data, vAccessor.v).domain());
+
+        svg.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + dim.height + ")")
+            .call(xAxis);
+
+        
+        ohlcSelection.append("g")
+            .attr("class", "volume")
+            .attr("clip-path", "url(#ohlcClip)")
+            .data([data])
+            .call(volume);
+      
+        ohlcSelection.append("g")
+            .attr("class", "candlestick")
+            .attr("clip-path", "url(#ohlcClip)")
+            .data([data])
+            .call(candlestick);
+
+
+        ohlcSelection.append("g")
+                     .attr("class", "volume axis")
+                     .call(volumeAxis);
+
+        ohlcSelection.append("g")
+            .attr("class", "volume axis");
+
+      
+        svg.append("g")
+            .attr("class", "y axis")
+            .call(yAxis);
+        /*
+        svg.append("g")
+            .attr("class", "x annotation bottom")
+            .attr("transform", "translate(0," + 30 + ")")
+            .data([[data[30]]])
+            .call(timeAnnotation)
+        */
+
+        svg.append("g")
+            .attr("class", "crosshair ohlc")
+            .call(ohlcCrosshair);
+
+        svg.append("g")
+            .attr("class", "test")
+            .attr("x", 30)
+            .attr("y", 100)
+            //.data([data])
+            
+        ohlcData = data;
+        /*
+        svg.append("g")
+            .attr("class", "ohlc")
+            .attr("transform", "translate(50," + 20 + ")")
+            .append("text")
+            .text("open: " + data[30].open
+                  + " high: " + data[30].high
+                  + " low: " + data[30].low
+                  + " close: " + data[30].close);
+            */
+    });
+
+    function move(coords){
+        
+        const ohlc = ohlcData.find(i => i.date == coords.x);
+        
+        coordsText.text(
+            "O: " + ohlc.open +
+            " H: " + ohlc.high +
+            " L: " + ohlc.low + 
+            " C: " + ohlc.close + 
+            "    V: " + ohlc.volume
+        );
+    }
+
+</script>

@@ -1,0 +1,8 @@
+bitstampUSD.csv
+bitstampUSD.csv.gz
+cryptowatch
+.vscode
+old
+dataOfBitstamp
+dataOfBitstampOHLC
+getDataIntoDB.py
