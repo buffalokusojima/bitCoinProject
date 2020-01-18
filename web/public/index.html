@@ -87,7 +87,7 @@
     var parseDate = d3.timeFormat("%Y-%m-%d %H:%M");
 
     var zoom = d3.zoom()
-              // .on("zoom", zoomed);
+               .on("zoom", zoomed);
 
     var x = techan.scale.financetime()
             .range([0, dim.plot.width]);
@@ -198,14 +198,14 @@
     var rawData;
     var ohlcData = [];
 
-    getData("hour", 1)
+    getData()
 
 
     function zoomed(){
         x.zoomable().domain(d3.event.transform.rescaleX(zoomableInit).domain());
         y.domain(d3.event.transform.rescaleY(yPercentInit).domain());
         yPercent.domain(d3.event.transform.rescaleY(yPercentInit).domain());
-
+        console.log("zooming")
         draw();
     }
 
@@ -231,8 +231,6 @@
                     rawData = rawData["data"];
                     ohlcData = setTerm(term,1, rawData);
 
-                    zoomableInit = x.zoomable().domain([50, ohlcData.length]).copy()
-                    yInit = y.copy();
                     setChart(ohlcData)
                 }
                 else{
@@ -382,10 +380,10 @@
 
         //x.domain(ohlcData.map(cAccessor.d));
         x.domain(techan.scale.plot.time(ohlcData).domain())
-        y.domain(techan.scale.plot.ohlc(ohlcData).domain());
-        //yPercent.domain(techan.scale.plot.percent(y, cAccessor(ohlcData[0])).domain())
+        y.domain(techan.scale.plot.ohlc(ohlcData.slice(ohlcData.length/4)).domain());
+        yPercent.domain(techan.scale.plot.ohlc(ohlcData, cAccessor).domain());
         yVolume.domain(techan.scale.plot.volume(ohlcData, vAccessor.v).domain());
-
+        
         svg.append("g")
             .attr("class", "x axis")
             .attr("transform", "translate(0," + dim.height + ")")
@@ -395,13 +393,13 @@
             .attr("class", "volume")
             .attr("clip-path", "url(#ohlcClip)")
             .data([ohlcData])
-            //.call(volume);
+            .call(volume);
 
         ohlcSelection.append("g")
             .attr("class", "candlestick")
             .attr("clip-path", "url(#ohlcClip)")
             .data([ohlcData])
-            //.call(candlestick);
+            .call(candlestick);
 
 
         ohlcSelection.append("g")
@@ -421,8 +419,14 @@
 
         svg.append("g")
             .attr("class", "crosshair ohlc")
-            //.call(ohlcCrosshair);
+            .call(ohlcCrosshair)
+            .call(zoom);
 
+        
+        zoomableInit = x.zoomable().domain([ohlcData.length/4*3, ohlcData.length]).copy()
+        yInit = y.copy();
+        yPercentInit = yPercent.copy();
+        
         draw();
 
     }
@@ -438,11 +442,11 @@
 
     function draw(){
         svg.select("g.x.axis").call(xAxis);
-        svg.select("g.candlestick").call(candlestick);
+        svg.select("g.candlestick").call(candlestick.refresh);
         svg.select("g.y.axis").call(yAxis);
-        svg.select("g.volume").call(volume);
+        svg.select("g.volume").call(volume.refresh);
         svg.select("g.volume.axis").call(volumeAxis);
-        svg.select("g.crosshair.ohlc").call(ohlcCrosshair);
+        svg.select("g.crosshair.ohlc").call(ohlcCrosshair.refresh);
     }
 
     
