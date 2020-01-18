@@ -57,9 +57,14 @@
 </style>
 <body>
 <!--<button>Update</button>-->
-<select id="termSelection" onchange="getData()">
-    <option value="min" >1min</option>
-    <option value="hour" >1hour</option>
+<select id="termSelection" onchange="convertTerm()">
+    <option value="1-min">1min</option>
+    <option value="5-min">5min</option>
+    <option value="10-min">10min</option>
+    <option value="15-min">15min</option>
+    <option value="30-min">30min</option>
+    <option value="1-hour">1hour</option>
+    <option value="2-hour">2hour</option>
 </select>
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="http://techanjs.org/techan.min.js"></script>
@@ -81,11 +86,18 @@
 
     var parseDate = d3.timeFormat("%Y-%m-%d %H:%M");
 
+    var zoom = d3.zoom()
+              // .on("zoom", zoomed);
+
     var x = techan.scale.financetime()
             .range([0, dim.plot.width]);
 
     var y = d3.scaleLinear()
             .range([dim.ohlc.height, 0]);
+
+    var yPercent = y.copy();
+
+    var yInit, yPercentInit, zoomableInit;
 
     var yVolume = d3.scaleLinear()
                   .range([y(0), y(0.2)]);
@@ -183,13 +195,24 @@
                      .attr("x", 550)
                      .attr("y", 0)
 
+    var rawData;
     var ohlcData = [];
 
     getData("hour", 1)
 
+
+    function zoomed(){
+        x.zoomable().domain(d3.event.transform.rescaleX(zoomableInit).domain());
+        y.domain(d3.event.transform.rescaleY(yPercentInit).domain());
+        yPercent.domain(d3.event.transform.rescaleY(yPercentInit).domain());
+
+        draw();
+    }
+
+
     function getData(){
 
-        var term = document.getElementById("termSelection").value;
+        var term = document.getElementById("termSelection").value.split("-")[1];
         console.log("unko")
         var num = 1;
 
@@ -204,11 +227,13 @@
             if(request.readyState === 4){
                 if(request.status === 200){
                     console.log("success")
-                    var data = JSON.parse(request.response);
-                    data = data["data"];
-                    ohlcData = setTerm(term,1, data);
+                    rawData = JSON.parse(request.response);
+                    rawData = rawData["data"];
+                    ohlcData = setTerm(term,1, rawData);
 
-                    draw(ohlcData)
+                    zoomableInit = x.zoomable().domain([50, ohlcData.length]).copy()
+                    yInit = y.copy();
+                    setChart(ohlcData)
                 }
                 else{
                     console.error(request.status);
@@ -235,69 +260,86 @@
                 draw(data['data'])
             });
         */
+        }
 
-        function setTerm(term, num, data){
 
-            ohlcData = [];
+    function convertTerm(){
 
-            var date;
-            try{
-                    date = new Date(data[0].date)
-                    var targetNum;
-                    if(term == "min"){
-                        targetNum = date.getMinutes() % num;
-                        date.setMinutes(date.getMinutes() - targetNum);
-                    }else if(term == "hour"){
-                        targetNum = date.getHours() % num;
-                        date.setHours(date.getHours() - targetNum);
-                    }else{
-                        throw new Error();
-                    }
-                    
-                }catch(err){
-                    throw err;
-                }
+        var tmp = document.getElementById("termSelection").value;
+        tmp = tmp.split("-");
+        var num = tmp[0];
+        var term = tmp[1]; 
+        
+        ohlcData = setTerm(term,num,rawData);
+        setChart(ohlcData);
+
+    }
+
+    function setTerm(term, num, data){
+
+        ohlcData = [];
+
+        var date;
+        
+        try{
+            date = new Date(data[0].date)
+            var targetNum;
+            if(term == "min"){
+                targetNum = date.getMinutes() % num;
+                date.setMinutes(date.getMinutes() - targetNum);
+            }else if(term == "hour"){
+                targetNum = date.getHours() % num;
+                date.setHours(date.getHours() - targetNum);
+            }else{
+                throw new Error();
+            }
+
+            num = Number(num);
+
+                
+        }catch(err){
+            throw err;
+        }
+
+        if(term == "min"){
+            date.setMinutes(date.getMinutes() + num);
+        }else if(term == "hour"){
+            date.setHours(date.getHours() + num);
+        }else{
+            throw new Error();
+        }
+        
+        ohlc = {date: new Date(date.getTime()), open: data[0].open, high: data[0].high, low: data[0].low, close: data[0].close, vol: 0}
+        
+        data.forEach(function(d){
+
+            if(date < new Date(d.date)){        
+                ohlcData.push(ohlc);
                 if(term == "min"){
                     date.setMinutes(date.getMinutes() + num);
                 }else if(term == "hour"){
                     date.setHours(date.getHours() + num);
-                }else{
-                    throw new Error();
                 }
-            
-            ohlc = {date: new Date(date.getTime()), open: data[0].open, high: data[0].high, low: data[0].low, close: data[0].close, vol: 0}
-            
-            data.forEach(function(d){
+                ohlc = {date: new Date(date.getTime()), open: d.open, high: d.high, low: d.low, close: d.close, vol: 0}
+            }
 
-                if(date < new Date(d.date)){        
-                    ohlcData.push(ohlc);
-                    if(term == "min"){
-                        date.setMinutes(date.getMinutes() + num);
-                    }else if(term == "hour"){
-                        date.setHours(date.getHours() + num);
-                    }
-                    ohlc = {date: new Date(date.getTime()), open: d.open, high: d.high, low: d.low, close: d.close, vol: 0}
-                }
+            if(ohlc.high < d.high){
+                ohlc.high = d.high;
+            }
+            if(ohlc.low > d.low){
+                ohlc.low = d.low;
+            }
+            ohlc.close = d.close;
+            ohlc.vol += d.vol
+        });
 
-                if(ohlc.high < d.high){
-                    ohlc.high = d.high;
-                }
-                if(ohlc.low > d.low){
-                    ohlc.low = d.low;
-                }
-                ohlc.close = d.close;
-                ohlc.vol += d.vol
-            });
+        ohlcData.push(ohlc);
 
-            ohlcData.push(ohlc);
-
-            return ohlcData;
-
-            
-        }
+        return ohlcData;
     }
+    
 
-    function draw(ohlcData){
+    function setChart(ohlcData){
     
         resetChart();
 
@@ -338,35 +380,37 @@
         }).sort(function(a, b) { return d3.ascending(cAccessor.d(a), cAccessor.d(b)); });
 
 
-        x.domain(ohlcData.map(cAccessor.d));
-        y.domain(techan.scale.plot.ohlc(ohlcData, cAccessor).domain());
+        //x.domain(ohlcData.map(cAccessor.d));
+        x.domain(techan.scale.plot.time(ohlcData).domain())
+        y.domain(techan.scale.plot.ohlc(ohlcData).domain());
+        //yPercent.domain(techan.scale.plot.percent(y, cAccessor(ohlcData[0])).domain())
         yVolume.domain(techan.scale.plot.volume(ohlcData, vAccessor.v).domain());
 
         svg.append("g")
             .attr("class", "x axis")
             .attr("transform", "translate(0," + dim.height + ")")
-            .call(xAxis);
+            //.call(xAxis);
 
         ohlcSelection.append("g")
             .attr("class", "volume")
             .attr("clip-path", "url(#ohlcClip)")
             .data([ohlcData])
-            .call(volume);
+            //.call(volume);
 
         ohlcSelection.append("g")
             .attr("class", "candlestick")
             .attr("clip-path", "url(#ohlcClip)")
             .data([ohlcData])
-            .call(candlestick);
+            //.call(candlestick);
 
 
         ohlcSelection.append("g")
                         .attr("class", "volume axis")
-                        .call(volumeAxis);
+                       // .call(volumeAxis);
 
         svg.append("g")
             .attr("class", "y axis")
-            .call(yAxis);
+            //.call(yAxis);
         /*
         svg.append("g")
             .attr("class", "x annotation bottom")
@@ -377,7 +421,9 @@
 
         svg.append("g")
             .attr("class", "crosshair ohlc")
-            .call(ohlcCrosshair);
+            //.call(ohlcCrosshair);
+
+        draw();
 
     }
 
@@ -387,6 +433,16 @@
         svg.select("g.y.axis").remove();
         svg.select("g.volume").remove();
         svg.select("g.volume.axis").remove();
+    }
+
+
+    function draw(){
+        svg.select("g.x.axis").call(xAxis);
+        svg.select("g.candlestick").call(candlestick);
+        svg.select("g.y.axis").call(yAxis);
+        svg.select("g.volume").call(volume);
+        svg.select("g.volume.axis").call(volumeAxis);
+        svg.select("g.crosshair.ohlc").call(ohlcCrosshair);
     }
 
     
