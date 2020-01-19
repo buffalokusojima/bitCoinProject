@@ -56,7 +56,7 @@
 
 </style>
 <body>
-<!--<button>Update</button>-->
+
 <select id="termSelection" onchange="convertTerm()">
     <option value="1-min">1min</option>
     <option value="5-min">5min</option>
@@ -205,7 +205,7 @@
         x.zoomable().domain(d3.event.transform.rescaleX(zoomableInit).domain());
         y.domain(d3.event.transform.rescaleY(yPercentInit).domain());
         yPercent.domain(d3.event.transform.rescaleY(yPercentInit).domain());
-        console.log("zooming")
+
         draw();
     }
 
@@ -213,14 +213,13 @@
     function getData(){
 
         var term = document.getElementById("termSelection").value.split("-")[1];
-        console.log("unko")
+        
         var num = 1;
 
         var request = new XMLHttpRequest();
 
         request.open('GET', 'http://localhost:3000/test?term='+term);
         request.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-        //request.send();
 
         request.onload = function(err){
             console.log(err)
@@ -243,21 +242,10 @@
             console.log("err" + request.statusText);
         };
 
-        //request.timeout = 10000;
         console.log("sending")
 
-        request.send("unko");
-        /*
-        request.addEventListener("load", 
-            function(){
-                data =  this.response;
-                console.log(data)
-                data = JSON.parse(data)
-                data['data'].splice(0,1)
-                //console.log(data['data'])
-                draw(data['data'])
-            });
-        */
+        request.send(null);
+        
         }
 
 
@@ -281,7 +269,9 @@
         
         try{
             date = new Date(data[0].date)
+            num = Number(num);
             var targetNum;
+            console.log(date)
             if(term == "min"){
                 targetNum = date.getMinutes() % num;
                 date.setMinutes(date.getMinutes() - targetNum);
@@ -291,14 +281,11 @@
             }else{
                 throw new Error();
             }
-
-            num = Number(num);
-
                 
         }catch(err){
             throw err;
         }
-
+        
         if(term == "min"){
             date.setMinutes(date.getMinutes() + num);
         }else if(term == "hour"){
@@ -344,27 +331,6 @@
         var cAccessor = candlestick.accessor();
         var vAccessor = volume.accessor();
 
-        /*
-        data = data.forEach(function(d) {
-                const date = d.date;
-                const open = d.open;
-                const high = d.high;
-                const low =  d.low;
-                const close = d.close;
-                const volume = d.vol;
-
-                var modifiedDattum = {
-                    Date: date,
-                    Open: open, 
-                    High: high, 
-                    Low: low, 
-                    Close: close, 
-                    Volume: volume
-                }
-
-                ohlcData.push(modifiedDattum);
-        });
-        */
         ohlcData = ohlcData.slice(ohlcData, ohlcData.length).map(function(d){
             
             return {
@@ -409,13 +375,7 @@
         svg.append("g")
             .attr("class", "y axis")
             //.call(yAxis);
-        /*
-        svg.append("g")
-            .attr("class", "x annotation bottom")
-            .attr("transform", "translate(0," + 30 + ")")
-            .data([[data[30]]])
-            .call(timeAnnotation)
-        */
+       
 
         svg.append("g")
             .attr("class", "crosshair ohlc")
