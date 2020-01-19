@@ -45,6 +45,8 @@ const table = ["price_1min", "price_1hour"];
 app.get('/test', (req, res) => {
   
   const term = req.query.term;
+  const fromDate = req.query.fromDate;
+  const toDate = req.query.toDate;
   var selectedTable;
   
   if(term == "min"){
@@ -53,16 +55,62 @@ app.get('/test', (req, res) => {
       selectedTable = table[1];
   }else{
       res.status(404).send("Error");
+      return;
   }
   
-  var sql = "SELECT * from " + selectedTable + " WHERE date BETWEEN '2019-09-29 00:00:01' AND '2019-09-30 00:00:00'";
+  if(typeof fromDate != "string" || fromDate.split("-").length != 3){
+    res.status(404).send("FromDate invalide");
+    return;
+  }
+  if(typeof toDate != "string" || fromDate.split("-").length != 3){
+    res.status(404).send("ToDate invalide");
+    return;
+  }
+
+  var tmpDate = fromDate.split("-");
+  let tmpFromDate;
+  try{
+    tmpFromDate = new Date(tmpDate[0], tmpDate[1], tmpDate[2]);
+  }catch{
+    res.status(404).send("FromDate invalide");
+    return;
+  }
+
+  tmpDate = toDate.split("-");
+  let tmpToDate;
+  try{
+    tmpToDate = new Date(tmpDate[0], tmpDate[1], Number(tmpDate[2])+1);
+  }catch{
+    res.status(404).send("ToDate invalide");
+    return;
+  }
   
+  if(tmpFromDate.getTime() > tmpToDate.getTime()){
+    res.status(404).send("FromDate invalide");
+    return;
+  }
+
+  tmpFromDate = "'" + fromDate + "'";
+  
+  tmpToDate = "'" +tmpToDate.getFullYear() + "-" + tmpToDate.getMonth() + "-" + tmpToDate.getDate() + "'";
+  
+  console.log(tmpToDate)
+
+  var sql = "SELECT * from " + selectedTable + " WHERE date BETWEEN "
+          + tmpFromDate + " AND " + tmpToDate;
+
   console.log(sql)
+
   con.query(sql, function(err, result){
       if(err){
         res.status(500).send("Error");
+        return;
       }
-      res.send(JSON.stringify({"data": result}))
+      console.log(result)
+      if(result == null || result.length == 0){
+        console.log("Empty");
+      }
+      res.send(JSON.stringify({"data": result, "term": term}))
     });
     
 });

@@ -65,7 +65,11 @@
     <option value="30-min">30min</option>
     <option value="1-hour">1hour</option>
     <option value="2-hour">2hour</option>
+    <option value="4-hour">4hour</option>
 </select>
+<input id="fromDate" type="date" onchange="setDate()" />
+<input id="toDate" type="date" onchange="setDate()"/>
+
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="http://techanjs.org/techan.min.js"></script>
 <script>
@@ -196,10 +200,37 @@
                      .attr("y", 0)
 
     var rawData;
+    var rawDataTerm;
     var ohlcData = [];
 
-    getData()
+    var fromDate = document.getElementById("fromDate");
 
+    var tmpDate = new Date();
+    tmpDate = tmpDate.getFullYear()+"-"+tmpDate.getMonth()+1+"-"+tmpDate.getDate();
+    fromDate.value = tmpDate;
+    fromDate.max = tmpDate;
+    toDate.min = tmpDate;
+    toDate.max = tmpDate;
+
+    var tmp = document.getElementById("termSelection").value;
+    tmp = tmp.split("-");
+    var num = tmp[0];
+    var term = tmp[1];
+
+    getData(term, num, fromDate.value, fromDate.value)
+
+
+    function setDate(){
+        fromDate.max = toDate.value;
+        toDate.min = fromDate.value;
+
+        var tmp = document.getElementById("termSelection").value;
+        tmp = tmp.split("-");
+        var num = tmp[0];
+        var term = tmp[1];
+
+        getData(term, num, fromDate.value, toDate.value);
+    }
 
     function zoomed(){
         x.zoomable().domain(d3.event.transform.rescaleX(zoomableInit).domain());
@@ -210,15 +241,11 @@
     }
 
 
-    function getData(){
-
-        var term = document.getElementById("termSelection").value.split("-")[1];
-        
-        var num = 1;
+    function getData(term, num, fromDate, toDate){ 
 
         var request = new XMLHttpRequest();
 
-        request.open('GET', 'http://localhost:3000/test?term='+term);
+        request.open('GET', 'http://localhost:3000/test?term='+term+'&fromDate='+fromDate+'&toDate='+toDate);
         request.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
 
         request.onload = function(err){
@@ -227,13 +254,18 @@
                 if(request.status === 200){
                     console.log("success")
                     rawData = JSON.parse(request.response);
+                    rawDataTerm = rawData["term"];
                     rawData = rawData["data"];
-                    ohlcData = setTerm(term,1, rawData);
-
+                    if(rawData.length == 0){
+                        console.log("No result");
+                        return;
+                    }
+                    ohlcData = setTerm(term,num,rawData);
+                    
                     setChart(ohlcData)
                 }
                 else{
-                    console.error(request.status);
+                    console.error(request.status, request.response);
                 }
             }
         };
@@ -256,9 +288,13 @@
         var num = tmp[0];
         var term = tmp[1]; 
         
+        if(term != rawDataTerm){
+            getData(term, num, fromDate.value, toDate.value);
+            return;
+        }
+        
         ohlcData = setTerm(term,num,rawData);
         setChart(ohlcData);
-
     }
 
     function setTerm(term, num, data){
@@ -271,7 +307,7 @@
             date = new Date(data[0].date)
             num = Number(num);
             var targetNum;
-            console.log(date)
+            
             if(term == "min"){
                 targetNum = date.getMinutes() % num;
                 date.setMinutes(date.getMinutes() - targetNum);
@@ -281,17 +317,18 @@
             }else{
                 throw new Error();
             }
-                
+            
         }catch(err){
             throw err;
         }
-        
-        if(term == "min"){
-            date.setMinutes(date.getMinutes() + num);
-        }else if(term == "hour"){
-            date.setHours(date.getHours() + num);
-        }else{
-            throw new Error();
+        if(num != 1){
+            if(term == "min"){
+                date.setMinutes(date.getMinutes() + num);
+            }else if(term == "hour"){
+                date.setHours(date.getHours() + num);
+            }else{
+                throw new Error();
+            }
         }
         
         ohlc = {date: new Date(date.getTime()), open: data[0].open, high: data[0].high, low: data[0].low, close: data[0].close, vol: 0}
