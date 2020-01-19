@@ -73,7 +73,7 @@
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="http://techanjs.org/techan.min.js"></script>
 <script>
-
+    
     var dim = {
             width: 960, height: 500,
             margin: {top: 50, right: 20, bottom: 50, left: 80},
@@ -202,34 +202,51 @@
     var rawData;
     var rawDataTerm;
     var ohlcData = [];
-
-    var fromDate = document.getElementById("fromDate");
-
-    var tmpDate = new Date();
-    tmpDate = tmpDate.getFullYear()+"-"+tmpDate.getMonth()+1+"-"+tmpDate.getDate();
+    
+    //var fromDate = document.getElementById("fromDate");
+    
+    /*
     fromDate.value = tmpDate;
     fromDate.max = tmpDate;
     toDate.min = tmpDate;
     toDate.max = tmpDate;
+    */
 
-    var tmp = document.getElementById("termSelection").value;
-    tmp = tmp.split("-");
-    var num = tmp[0];
-    var term = tmp[1];
+    getData(setParameters());
 
-    getData(term, num, fromDate.value, fromDate.value)
+    function setParameters(){
+        var termElement = document.getElementById("termSelection");
+        termElement = termElement.value.split("-");
+        const num = termElement[0];
+        const term = termElement[1];
+        var fromDate = document.getElementById("fromDate").value;
+        var toDate = document.getElementById("toDate").value;
+        if(fromDate == 'undefind' || fromDate == ''){
+            var tmpDate = new Date();
+            tmpDate = tmpDate.getFullYear()+"-"+tmpDate.getMonth()+1+"-"+tmpDate.getDate();
+            fromDate = tmpDate;
+            document.getElementById("fromDate").value = tmpDate;
+            document.getElementById("fromDate").max = tmpDate;
+        }if(toDate == 'undefind' || toDate == ''){
+            var tmpDate = new Date();
+            tmpDate = tmpDate.getFullYear()+"-"+tmpDate.getMonth()+1+"-"+tmpDate.getDate();
+            toDate = tmpDate;
+            document.getElementById("toDate").value = tmpDate;
+            document.getElementById("toDate").min = tmpDate;
+            document.getElementById("toDate").max = tmpDate;
+        }
+        
+        return {num, term, fromDate, toDate};
+    }
 
 
     function setDate(){
+        var fromDate = document.getElementById("fromDate");
+        var toDate = document.getElementById("toDate")
         fromDate.max = toDate.value;
         toDate.min = fromDate.value;
 
-        var tmp = document.getElementById("termSelection").value;
-        tmp = tmp.split("-");
-        var num = tmp[0];
-        var term = tmp[1];
-
-        getData(term, num, fromDate.value, toDate.value);
+        getData(setParameters());
     }
 
     function zoomed(){
@@ -241,11 +258,11 @@
     }
 
 
-    function getData(term, num, fromDate, toDate){ 
+    function getData(obj){ 
 
         var request = new XMLHttpRequest();
 
-        request.open('GET', 'http://localhost:3000/test?term='+term+'&fromDate='+fromDate+'&toDate='+toDate);
+        request.open('GET', 'http://localhost:3000/test?term='+obj.term+'&fromDate='+obj.fromDate+'&toDate='+obj.toDate);
         request.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
 
         request.onload = function(err){
@@ -260,7 +277,7 @@
                         console.log("No result");
                         return;
                     }
-                    ohlcData = setTerm(term,num,rawData);
+                    ohlcData = setTerm(obj.term,obj.num,rawData);
                     
                     setChart(ohlcData)
                 }
@@ -283,17 +300,14 @@
 
     function convertTerm(){
 
-        var tmp = document.getElementById("termSelection").value;
-        tmp = tmp.split("-");
-        var num = tmp[0];
-        var term = tmp[1]; 
+        var tmpTermElement = termElement.value.split("-");
         
         if(term != rawDataTerm){
-            getData(term, num, fromDate.value, toDate.value);
+            getData(tmpTermElement[1], tmpTermElement[0], fromDate.value, toDate.value);
             return;
         }
         
-        ohlcData = setTerm(term,num,rawData);
+        ohlcData = setTerm(tmpTermElement[1],tmpTermElement[0],rawData);
         setChart(ohlcData);
     }
 
