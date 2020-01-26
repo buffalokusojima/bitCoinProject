@@ -53,6 +53,17 @@
         fill: #DDD80E;
     }
     
+    #calendar{
+        display:none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.5);
+    }
 
 </style>
 <body>
@@ -67,9 +78,12 @@
     <option value="2-hour">2hour</option>
     <option value="4-hour">4hour</option>
 </select>
-<input id="fromDate" type="date" onchange="setDate()" />
-<input id="toDate" type="date" onchange="setDate()"/>
-
+<input type="button" id="calendar_display" onclick="displayCalendar()">
+<div id="calendar">
+    <input id="fromDate" type="date" onchange="setDate()" />
+    <input id="toDate" type="date" onchange="setDate()"/>
+    <input type="button" id="calendar_close" onclick="displayCalendar()" value="close">
+</div>
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="http://techanjs.org/techan.min.js"></script>
 <script>
@@ -203,14 +217,7 @@
     var rawDataTerm;
     var ohlcData = [];
     
-    //var fromDate = document.getElementById("fromDate");
-    
-    /*
-    fromDate.value = tmpDate;
-    fromDate.max = tmpDate;
-    toDate.min = tmpDate;
-    toDate.max = tmpDate;
-    */
+    const MIN_TERM_LIMIT = 60
 
     getData(setParameters());
 
@@ -236,6 +243,8 @@
             document.getElementById("toDate").max = tmpDate;
         }
         
+        document.getElementById("calendar_display").value = fromDate +" ~ " + toDate;
+
         return {num, term, fromDate, toDate};
     }
 
@@ -246,7 +255,37 @@
         fromDate.max = toDate.value;
         toDate.min = fromDate.value;
 
-        getData(setParameters());
+        //getData(setParameters());
+    }
+
+    function displayCalendar(){
+        var display = document.getElementById("calendar")
+        
+        if(display.style.display == 'none' || display.style.display == ""){
+            display.style.display = 'block';
+        }else{
+            const date = document.getElementById("calendar_display").value.split(" ~ ");
+            
+            const tmpFromDate = date[0];
+            const tmpToDate = date[1];
+            var fromDate = document.getElementById("fromDate").value
+            var toDate = document.getElementById("toDate").value;
+            
+            if(tmpFromDate != fromDate || tmpToDate != toDate){
+                const term = document.getElementById("termSelection").value.split("-")[1];
+                if(term == "min"){
+                    const gap = (new Date(toDate).getTime() - new Date(fromDate).getTime())/(1000*60*60*24);
+                    if(gap > MIN_TERM_LIMIT){
+                        var tmpDate = new Date(toDate)
+                        tmpDate.setDate(tmpDate.getDate() - MIN_TERM_LIMIT);
+                        document.getElementById("fromDate").value = tmpDate.getFullYear()+"-"+(tmpDate.getMonth()+1)+"-"+tmpDate.getDate();
+                        console.log(tmpDate)
+                    }
+                }
+                getData(setParameters());
+            }
+            display.style.display = 'none';
+        }
     }
 
     function zoomed(){
@@ -300,10 +339,11 @@
 
     function convertTerm(){
 
-        var tmpTermElement = termElement.value.split("-");
-        
+        var tmpTermElement = document.getElementById("termSelection").value.split("-");
+        var num = tmpTermElement[0];
+        var term = tmpTermElement[1];
         if(term != rawDataTerm){
-            getData(tmpTermElement[1], tmpTermElement[0], fromDate.value, toDate.value);
+            getData(setParameters());
             return;
         }
         
