@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 import traceback
 
 import MySQLdb as sql
+import json
 
 sys.path.append("../util")
 import util
@@ -22,11 +23,17 @@ class DbDataContoroller():
         if self.PATH is None:
             self.PATH = "../dataOfBitstamp"
 
+        dbInfo = None
+        with open("./dbPath.json", 'r') as f:
+            filePath = json.load(f)
+            with open(filePath['filePath'], 'r') as f:
+                dbInfo = json.load(f)
+       
         self.CONN = sql.connect(
-            host = 'localhost',
-            user = 'root',
-            password = 'american1911!',
-            database = 'trade'
+            host = dbInfo['host'],
+            user = dbInfo['user'],
+            password = dbInfo['password'],
+            database = dbInfo['database']
         )
 
 
