@@ -12,6 +12,8 @@ const fs = require('fs');
 
 const csvSync = require('csv-parse/lib/sync');
 
+const moment = require('moment');
+
 const DB_FILE_PATH = JSON.parse(fs.readFileSync('./dbPath.json','utf8'));
 
 const DB_INFO = JSON.parse(fs.readFileSync(DB_FILE_PATH.filePath,'utf8'));
@@ -70,7 +72,7 @@ app.get('/test', (req, res) => {
   var tmpDate = fromDate.split("-");
   let tmpFromDate;
   try{
-    tmpFromDate = new Date(tmpDate[0], tmpDate[1], tmpDate[2]);
+    tmpFromDate = new Date(tmpDate[0], Number(tmpDate[1])-1, tmpDate[2]);
   }catch{
     res.status(404).send("FromDate invalide");
     return;
@@ -79,12 +81,17 @@ app.get('/test', (req, res) => {
   tmpDate = toDate.split("-");
   let tmpToDate;
   try{
-    tmpToDate = new Date(tmpDate[0], tmpDate[1], Number(tmpDate[2])+1);
+    tmpToDate = new Date(tmpDate[0], Number(tmpDate[1])-1, Number(tmpDate[2])+1);
+    if(!moment([tmpDate[0],tmpDate[1],tmpDate[2]], 'YYYY-MM-DD')){
+      tmpToDate = new Date(tmpDate[0], tmpDate[1], 1);
+    }
+    console.log(moment([tmpToDate.getFullYear(),tmpToDate.getMonth(),tmpToDate.getDate()], 'YYYY-MM-DD'))
+    
   }catch{
     res.status(404).send("ToDate invalide");
     return;
   }
-  
+  console.log(tmpFromDate, tmpToDate)
   if(tmpFromDate.getTime() > tmpToDate.getTime()){
     res.status(404).send("FromDate invalide");
     return;
@@ -92,7 +99,7 @@ app.get('/test', (req, res) => {
 
   tmpFromDate = "'" + fromDate + "'";
   
-  tmpToDate = "'" +tmpToDate.getFullYear() + "-" + tmpToDate.getMonth() + "-" + tmpToDate.getDate() + "'";
+  tmpToDate = "'" +tmpToDate.getFullYear() + "-" + Number(tmpToDate.getMonth()+1) + "-" + tmpToDate.getDate() + "'";
   
   console.log(tmpToDate)
 
