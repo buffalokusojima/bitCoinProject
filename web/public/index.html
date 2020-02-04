@@ -79,6 +79,7 @@
     <option value="4-hour">4hour</option>
 </select>
 <input type="button" id="calendar_display" onclick="displayCalendar()">
+<br>
 <div id="calendar">
     <input id="fromDate" type="date" onchange="setDate()" />
     <input id="toDate" type="date" onchange="setDate()"/>
@@ -230,13 +231,13 @@
         var toDate = document.getElementById("toDate").value;
         if(fromDate == 'undefind' || fromDate == ''){
             var tmpDate = new Date();
-            tmpDate = tmpDate.getFullYear()+"-"+tmpDate.getMonth()+1+"-"+tmpDate.getDate();
+            tmpDate = tmpDate.getFullYear()+"-"+(Number(tmpDate.getMonth())+1)+"-"+tmpDate.getDate();
             fromDate = tmpDate;
             document.getElementById("fromDate").value = tmpDate;
             document.getElementById("fromDate").max = tmpDate;
         }if(toDate == 'undefind' || toDate == ''){
             var tmpDate = new Date();
-            tmpDate = tmpDate.getFullYear()+"-"+tmpDate.getMonth()+1+"-"+tmpDate.getDate();
+            tmpDate = tmpDate.getFullYear()+"-"+(Number(tmpDate.getMonth())+1)+"-"+tmpDate.getDate();
             toDate = tmpDate;
             document.getElementById("toDate").value = tmpDate;
             document.getElementById("toDate").min = tmpDate;

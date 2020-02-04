@@ -6,3 +6,5 @@ old
 dataOfBitstamp
 dataOfBitstampOHLC
 getDataIntoDB.py
+csvContorol/bitStampUSD.csv.gzip
+csvContorol/bitStampUSD.csv
