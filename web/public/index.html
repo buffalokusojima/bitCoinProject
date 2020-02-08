@@ -35,6 +35,31 @@
         stroke: #FF0000;
     }
 
+    .indicator-plot path.line {
+        fill: none;
+        stroke-width: 1;
+    }
+
+    .sma{
+        fill: none;
+    }
+
+    .ema{
+        fill: none;
+    }
+
+    .ma-0 path.line {
+        stroke: #1f77b4;
+    }
+
+    .ma-1 path.line {
+        stroke: #aec7e8;
+    }
+
+    .ma-2 path.line {
+        stroke: #ff7f0e;
+    }
+
     .crosshair {
         cursor: crosshair;
     }
@@ -88,7 +113,7 @@
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="http://techanjs.org/techan.min.js"></script>
 <script>
-    
+
     var dim = {
             width: 960, height: 500,
             margin: {top: 50, right: 20, bottom: 50, left: 80},
@@ -102,6 +127,9 @@
     }
     dim.indicator.top = dim.ohlc.height + dim.indicator.padding;
     dim.indicator.bottom = dim.indicator.top + dim.indicator.height + dim.indicator.padding;
+
+    var indicatorTop = d3.scaleLinear()
+            .range([dim.indicator.top, dim.indicator.bottom]);
 
     var parseDate = d3.timeFormat("%Y-%m-%d %H:%M");
 
@@ -124,6 +152,19 @@
     var candlestick = techan.plot.candlestick()
             .xScale(x)
             .yScale(y);
+
+    var sma0 = techan.plot.sma()
+            .xScale(x)
+            .yScale(y);
+    
+    var sma1 = techan.plot.sma()
+            .xScale(x)
+            .yScale(y);
+
+    var ema2 = techan.plot.ema()
+            .xScale(x)
+            .yScale(y);
+
 
     var xAxis = d3.axisBottom(x)
                 .scale(x)
@@ -184,6 +225,17 @@
             .attr("y", 0)
             .attr("width", dim.plot.width)
             .attr("height", dim.ohlc.height);
+
+    defs.selectAll("indicatorClip").data([0, 1])
+        .enter()
+            .append("clipPath")
+            .attr("id", function(d, i) { return "indicatorClip-" + i; })
+        .append("rect")
+            .attr("x", 0)
+            .attr("y", function(d, i) { return indicatorTop(i); })
+            .attr("width", dim.plot.width)
+            .attr("height", dim.indicator.height);
+
 
     svg = svg.append("g")
             .attr("transform", "translate(" + dim.margin.left + "," + dim.margin.top + ")");
@@ -458,6 +510,24 @@
             .attr("clip-path", "url(#ohlcClip)")
             .data([ohlcData])
             .call(candlestick);
+        
+        ohlcSelection.append("g")
+            .attr("class", "indicator sma ma-0")
+            .attr("clip-path", "url(#ohlcClip)")
+            .data([techan.indicator.sma().period(10)(ohlcData)])
+            .call(sma0)
+        
+        ohlcSelection.append("g")
+            .attr("class", "indicator sma ma-1")
+            .attr("clip-path", "url(#ohlcClip)")
+            .data([techan.indicator.sma().period(20)(ohlcData)])
+            .call(sma1);
+
+
+        ohlcSelection.append("g")
+            .attr("class", "indicator ema ma-2")
+            .attr("clip-path", "url(#ohlcClip)")
+            .data([techan.indicator.ema().period(50)(ohlcData)])
 
 
         ohlcSelection.append("g")
@@ -489,6 +559,9 @@
         svg.select("g.y.axis").remove();
         svg.select("g.volume").remove();
         svg.select("g.volume.axis").remove();
+        svg.select("g.sma.ma-0").remove();
+        svg.select("g.sma.ma-1").remove();
+        svg.select("g.ema.ma-2").remove();
     }
 
 
@@ -496,9 +569,13 @@
         svg.select("g.x.axis").call(xAxis);
         svg.select("g.candlestick").call(candlestick.refresh);
         svg.select("g.y.axis").call(yAxis);
+        svg.select("g.sma.ma-0").call(sma0.refresh);
+        svg.select("g.sma.ma-1").call(sma1.refresh);
+        svg.select("g.ema.ma-2").call(ema2.refresh);
         svg.select("g.volume").call(volume.refresh);
         svg.select("g.volume.axis").call(volumeAxis);
         svg.select("g.crosshair.ohlc").call(ohlcCrosshair.refresh);
+        
     }
 
     
