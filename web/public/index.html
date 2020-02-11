@@ -382,15 +382,16 @@
         const term = termElement[1];
         var fromDate = document.getElementById("fromDate").value;
         var toDate = document.getElementById("toDate").value;
-        if(fromDate == 'undefind' || fromDate == ''){
+        if(fromDate == 'undefind' || fromDate == '' || toDate == 'undefind' || toDate == ''){
             var tmpDate = new Date();
-            tmpDate = tmpDate.getFullYear()+"-"+(Number(tmpDate.getMonth())+1)+"-"+tmpDate.getDate();
+            var month = Number(tmpDate.getMonth())+1
+            if(month<10){
+                month = "0" + month
+            }
+            tmpDate = tmpDate.getFullYear()+"-"+month+"-"+tmpDate.getDate();
             fromDate = tmpDate;
             document.getElementById("fromDate").value = tmpDate;
             document.getElementById("fromDate").max = tmpDate;
-        }if(toDate == 'undefind' || toDate == ''){
-            var tmpDate = new Date();
-            tmpDate = tmpDate.getFullYear()+"-"+(Number(tmpDate.getMonth())+1)+"-"+tmpDate.getDate();
             toDate = tmpDate;
             document.getElementById("toDate").value = tmpDate;
             document.getElementById("toDate").min = tmpDate;
