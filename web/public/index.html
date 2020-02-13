@@ -544,7 +544,7 @@
         ohlc = {date: new Date(date.getTime()), open: data[0].open, high: data[0].high, low: data[0].low, close: data[0].close, vol: 0}
         
         data.forEach(function(d){
-
+            console.log(date)
             if(date < new Date(d.date)){        
                 ohlcData.push(ohlc);
                 if(term == "min"){

@@ -8,8 +8,8 @@ from io import StringIO
 
 import gzip
 
-sys.path.append("../util")
-import util
+sys.path.append("../")
+from util import util
 
 class CsvDataContoroller():
     
@@ -17,7 +17,7 @@ class CsvDataContoroller():
 
         self.PATH = path
         if self.PATH is None:
-            self.PATH = "../dataOfBitstamp"
+            self.PATH = "./dataOfBitstamp"
         self.FILE_NAME = fileName
         if self.FILE_NAME is None:
             self.FILE_NAME = "bitstampUSD.csv"
@@ -26,7 +26,7 @@ class CsvDataContoroller():
 
         
         try:
-            """
+            
             with urllib.request.urlopen(url) as web_file:
                 data = web_file.read()
                 with open(filePath, mode='wb') as local_file:
@@ -35,8 +35,8 @@ class CsvDataContoroller():
             with gzip.open(filePath, mode='rt') as fp:
                  with open(self.FILE_NAME, 'w') as f:
                      f.write(fp.read())
-            """
-            pass
+            
+            
         except urllib.error.URLError as e:
             print(e)
 
@@ -82,7 +82,7 @@ class CsvDataContoroller():
         if TERM == "1minute":
             filenameSufix = "OHLC_1minute.csv"
             term = MINUTES
-            PATH = "../dataOfBitstampOHLC/1minute"
+            PATH = "./dataOfBitstampOHLC/1minute"
             if not os.path.isdir(PATH):
                 print("PATH:",PATH,"does not exist")
                 return
@@ -90,7 +90,7 @@ class CsvDataContoroller():
         elif TERM == "5minutes":
             filenameSufix = "OHLC_5minutes.csv"
             term = 5 * MINUTES
-            PATH = "../dataOfBitstampOHLC/5minutes"
+            PATH = "./dataOfBitstampOHLC/5minutes"
             if not os.path.isdir(PATH):
                 print("PATH:",PATH,"does not exist")
                 return
@@ -98,7 +98,7 @@ class CsvDataContoroller():
         elif TERM == "15minutes":
             filenameSufix = "OHLC_15minutes.csv"
             term = 15 * MINUTES
-            PATH = "../dataOfBitstampOHLC/15minutes"
+            PATH = "./dataOfBitstampOHLC/15minutes"
             if not os.path.isdir(PATH):
                 print("PATH:",PATH,"does not exist")
                 return
@@ -106,7 +106,7 @@ class CsvDataContoroller():
         elif TERM == "30minutes":
             filenameSufix = "OHLC_30minutes.csv"
             term = 30 * MINUTES
-            PATH = "../dataOfBitstampOHLC/30minutes"
+            PATH = "./dataOfBitstampOHLC/30minutes"
             if not os.path.isdir(PATH):
                 print("PATH:",PATH,"does not exist")
                 return
@@ -114,7 +114,7 @@ class CsvDataContoroller():
         elif TERM == "1hour":
             filenameSufix = "OHLC_1hour.csv"
             term = 60 * MINUTES
-            PATH = "../dataOfBitstampOHLC/1hour"
+            PATH = "./dataOfBitstampOHLC/1hour"
             if not os.path.isdir(PATH):
                 print("PATH:",PATH,"does not exist")
                 return
@@ -122,7 +122,7 @@ class CsvDataContoroller():
         elif TERM == "4hours":
             filenameSufix = "OHLC_4hours.csv"
             term = 240 * MINUTES
-            PATH = "../dataOfBitstampOHLC/4hours"
+            PATH = "./dataOfBitstampOHLC/4hours"
             if not os.path.isdir(PATH):
                 print("PATH:",PATH,"does not exist")
                 return
@@ -131,7 +131,7 @@ class CsvDataContoroller():
         elif TERM == "1day":
             filenameSufix = "OHLC_1day.csv"
             term = 3600 * MINUTES
-            PATH = "../dataOfBitstampOHLC/1day"
+            PATH = "./dataOfBitstampOHLC/1day"
             if not os.path.isdir(PATH):
                 print("PATH:",PATH,"does not exist")
                 return
@@ -257,7 +257,7 @@ if __name__ == "__main__":
 
     #This should be latter than get_option to get args
     contoroller = CsvDataContoroller(None,None)
-    #contoroller.downloadDataFromAPI(URL, "./bitStampUSD.csv.gzip")
+    contoroller.downloadDataFromAPI(URL, "./bitStampUSD.csv.gzip")
     contoroller.getBitHistory()
 
     #defaul items

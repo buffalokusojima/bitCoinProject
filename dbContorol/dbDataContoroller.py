@@ -7,8 +7,8 @@ import traceback
 import MySQLdb as sql
 import json
 
-sys.path.append("../util")
-import util
+sys.path.append("../")
+from util import util
 
 
 class DbDataContoroller():
@@ -21,10 +21,10 @@ class DbDataContoroller():
 
         self.PATH = path
         if self.PATH is None:
-            self.PATH = "../dataOfBitstamp"
+            self.PATH = "./dataOfBitstamp"
 
         dbInfo = None
-        with open("./dbPath.json", 'r') as f:
+        with open("./dbContorol/dbPath.json", 'r') as f:
             filePath = json.load(f)
             with open(filePath['filePath'], 'r') as f:
                 dbInfo = json.load(f)
@@ -185,8 +185,8 @@ class DbDataContoroller():
             try:
                 #print(ohlc)
                 #The latest data in DB should be replaced
-                #cursor.execute("INSERT INTO "+ table_name +" VALUES(%s, %s, %s, %s, %s, %s, %s, %s)", (ohlc[0], 1, 1, ohlc[1], ohlc[4], ohlc[2], ohlc[3], ohlc[5]))
-                pass
+                cursor.execute("INSERT INTO "+ table_name +" VALUES(%s, %s, %s, %s, %s, %s, %s, %s)", (ohlc[0], 1, 1, ohlc[1], ohlc[4], ohlc[2], ohlc[3], ohlc[5]))
+                
             except:
                 traceback.print_exc()
         self.CONN.commit()

@@ -35,6 +35,18 @@
         stroke: #FF0000;
     }
 
+    .ma-0 path.line {
+        stroke: #1f77b4;
+    }
+/*
+    .ma-1 path.line {
+        stroke: #aec7e8;
+    }
+
+    .ma-2 path.line {
+        stroke: #ff7f0e;
+    }
+*/
     .crosshair {
         cursor: crosshair;
     }
@@ -53,10 +65,38 @@
         fill: #DDD80E;
     }
     
+    #calendar{
+        display:none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.5);
+    }
 
 </style>
 <body>
-<!--<button>Update</button>-->
+
+<select id="termSelection" onchange="convertTerm()">
+    <option value="1-min">1min</option>
+    <option value="5-min">5min</option>
+    <option value="10-min">10min</option>
+    <option value="15-min">15min</option>
+    <option value="30-min">30min</option>
+    <option value="1-hour">1hour</option>
+    <option value="2-hour">2hour</option>
+    <option value="4-hour">4hour</option>
+</select>
+<input type="button" id="calendar_display" onclick="displayCalendar()">
+<br>
+<div id="calendar">
+    <input id="fromDate" type="date" onchange="setDate()" />
+    <input id="toDate" type="date" onchange="setDate()"/>
+    <input type="button" id="calendar_close" onclick="displayCalendar()" value="close">
+</div>
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="http://techanjs.org/techan.min.js"></script>
 <script>
@@ -75,7 +115,13 @@
     dim.indicator.top = dim.ohlc.height + dim.indicator.padding;
     dim.indicator.bottom = dim.indicator.top + dim.indicator.height + dim.indicator.padding;
 
-    var parseDate = d3.timeParse("%Y-%m-%d %H:%M");
+    var indicatorTop = d3.scaleLinear()
+            .range([dim.indicator.top, dim.indicator.bottom]);
+
+    var parseDate = d3.timeFormat("%Y-%m-%d %H:%M");
+
+    var zoom = d3.zoom()
+               .on("zoom", zoomed);
 
     var x = techan.scale.financetime()
             .range([0, dim.plot.width]);
@@ -83,12 +129,29 @@
     var y = d3.scaleLinear()
             .range([dim.ohlc.height, 0]);
 
+    var yPercent = y.copy();
+
+    var yInit, yPercentInit, zoomableInit;
+
     var yVolume = d3.scaleLinear()
                   .range([y(0), y(0.2)]);
   
     var candlestick = techan.plot.candlestick()
             .xScale(x)
             .yScale(y);
+
+    var sma0 = techan.plot.sma()
+            .xScale(x)
+            .yScale(y);
+    /*
+    var sma1 = techan.plot.sma()
+            .xScale(x)
+            .yScale(y);
+
+    var ema2 = techan.plot.ema()
+            .xScale(x)
+            .yScale(y);
+*/
 
     var xAxis = d3.axisBottom(x)
                 .scale(x)
@@ -150,6 +213,17 @@
             .attr("width", dim.plot.width)
             .attr("height", dim.ohlc.height);
 
+    defs.selectAll("indicatorClip").data([0, 1])
+        .enter()
+            .append("clipPath")
+            .attr("id", function(d, i) { return "indicatorClip-" + i; })
+        .append("rect")
+            .attr("x", 0)
+            .attr("y", function(d, i) { return indicatorTop(i); })
+            .attr("width", dim.plot.width)
+            .attr("height", dim.indicator.height);
+
+
     svg = svg.append("g")
             .attr("transform", "translate(" + dim.margin.left + "," + dim.margin.top + ")");
     
@@ -176,71 +250,241 @@
 
     var coordsText = svg.append("text")
                      .style("text-anchor", "end")
-                     .attr("x", 400)
+                     .attr("x", 550)
                      .attr("y", 0)
 
-    var ohlcData;
-    var data;
-    var request = new XMLHttpRequest();
+    var rawData;
+    var rawDataTerm;
+    var ohlcData = [];
+    
+    const MIN_TERM_LIMIT = 60
 
-    request.open('GET', 'http://localhost:3000/test');
-    request.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-    request.send();
-    var data;
-    request.addEventListener("load", 
-        function(){
-            data =  this.response;
-            data = JSON.parse(data)
-            draw(data)
+    getData(setParameters());
+
+    function setParameters(){
+        var termElement = document.getElementById("termSelection");
+        termElement = termElement.value.split("-");
+        const num = termElement[0];
+        const term = termElement[1];
+        var fromDate = document.getElementById("fromDate").value;
+        var toDate = document.getElementById("toDate").value;
+        if(fromDate == 'undefind' || fromDate == ''){
+            var tmpDate = new Date();
+            tmpDate = tmpDate.getFullYear()+"-"+(Number(tmpDate.getMonth())+1)+"-"+tmpDate.getDate();
+            fromDate = tmpDate;
+            document.getElementById("fromDate").value = tmpDate;
+            document.getElementById("fromDate").max = tmpDate;
+        }if(toDate == 'undefind' || toDate == ''){
+            var tmpDate = new Date();
+            tmpDate = tmpDate.getFullYear()+"-"+(Number(tmpDate.getMonth())+1)+"-"+tmpDate.getDate();
+            toDate = tmpDate;
+            document.getElementById("toDate").value = tmpDate;
+            document.getElementById("toDate").min = tmpDate;
+            document.getElementById("toDate").max = tmpDate;
+        }
+        
+        document.getElementById("calendar_display").value = fromDate +" ~ " + toDate;
+
+        return {num, term, fromDate, toDate};
+    }
+
+
+    function setDate(){
+        var fromDate = document.getElementById("fromDate");
+        var toDate = document.getElementById("toDate")
+        fromDate.max = toDate.value;
+        toDate.min = fromDate.value;
+
+        //getData(setParameters());
+    }
+
+    function displayCalendar(){
+        var display = document.getElementById("calendar")
+        
+        if(display.style.display == 'none' || display.style.display == ""){
+            display.style.display = 'block';
+        }else{
+            const date = document.getElementById("calendar_display").value.split(" ~ ");
+            
+            const tmpFromDate = date[0];
+            const tmpToDate = date[1];
+            var fromDate = document.getElementById("fromDate").value
+            var toDate = document.getElementById("toDate").value;
+            
+            if(tmpFromDate != fromDate || tmpToDate != toDate){
+                const term = document.getElementById("termSelection").value.split("-")[1];
+                if(term == "min"){
+                    const gap = (new Date(toDate).getTime() - new Date(fromDate).getTime())/(1000*60*60*24);
+                    if(gap > MIN_TERM_LIMIT){
+                        var tmpDate = new Date(toDate)
+                        tmpDate.setDate(tmpDate.getDate() - MIN_TERM_LIMIT);
+                        document.getElementById("fromDate").value = tmpDate.getFullYear()+"-"+(tmpDate.getMonth()+1)+"-"+tmpDate.getDate();
+                        console.log(tmpDate)
+                    }
+                }
+                getData(setParameters());
+            }
+            display.style.display = 'none';
+        }
+    }
+
+    function zoomed(){
+        x.zoomable().domain(d3.event.transform.rescaleX(zoomableInit).domain());
+        y.domain(d3.event.transform.rescaleY(yPercentInit).domain());
+        yPercent.domain(d3.event.transform.rescaleY(yPercentInit).domain());
+
+        draw();
+    }
+
+
+    function getData(obj){ 
+
+        var request = new XMLHttpRequest();
+
+        request.open('GET', 'http://localhost:3000/test?term='+obj.term+'&fromDate='+obj.fromDate+'&toDate='+obj.toDate);
+        request.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+
+        request.onload = function(err){
+            console.log(err)
+            if(request.readyState === 4){
+                if(request.status === 200){
+                    console.log("success")
+                    rawData = JSON.parse(request.response);
+                    rawDataTerm = rawData["term"];
+                    rawData = rawData["data"];
+                    if(rawData.length == 0){
+                        console.log("No result");
+                        return;
+                    }
+                    ohlcData = setTerm(obj.term,obj.num,rawData);
+                    
+                    setChart(ohlcData)
+                }
+                else{
+                    console.error(request.status, request.response);
+                }
+            }
+        };
+
+        request.onerror = function(err){
+            console.log("err" + request.statusText);
+        };
+
+        console.log("sending")
+
+        request.send(null);
+        
+        }
+
+
+    function convertTerm(){
+
+        var tmpTermElement = document.getElementById("termSelection").value.split("-");
+        var num = tmpTermElement[0];
+        var term = tmpTermElement[1];
+        if(term != rawDataTerm){
+            getData(setParameters());
+            return;
+        }
+        
+        ohlcData = setTerm(tmpTermElement[1],tmpTermElement[0],rawData);
+        setChart(ohlcData);
+    }
+
+    function setTerm(term, num, data){
+
+        ohlcData = [];
+
+        var date;
+        
+        try{
+            date = new Date(data[0].date)
+            num = Number(num);
+            var targetNum;
+            
+            if(term == "min"){
+                targetNum = date.getMinutes() % num;
+                date.setMinutes(date.getMinutes() - targetNum);
+            }else if(term == "hour"){
+                targetNum = date.getHours() % num;
+                date.setHours(date.getHours() - targetNum);
+            }else{
+                throw new Error();
+            }
+            
+        }catch(err){
+            throw err;
+        }
+        if(num != 1){
+            if(term == "min"){
+                date.setMinutes(date.getMinutes() + num);
+            }else if(term == "hour"){
+                date.setHours(date.getHours() + num);
+            }else{
+                throw new Error();
+            }
+        }
+        
+        ohlc = {date: new Date(date.getTime()), open: data[0].open, high: data[0].high, low: data[0].low, close: data[0].close, vol: 0}
+        
+        data.forEach(function(d){
+
+            if(date < new Date(d.date)){        
+                ohlcData.push(ohlc);
+                if(term == "min"){
+                    date.setMinutes(date.getMinutes() + num);
+                }else if(term == "hour"){
+                    date.setHours(date.getHours() + num);
+                }
+                ohlc = {date: new Date(date.getTime()), open: d.open, high: d.high, low: d.low, close: d.close, vol: 0}
+            }
+
+            if(ohlc.high < d.high){
+                ohlc.high = d.high;
+            }
+            if(ohlc.low > d.low){
+                ohlc.low = d.low;
+            }
+            ohlc.close = d.close;
+            ohlc.vol += d.vol
         });
+
+        ohlcData.push(ohlc);
+
+        return ohlcData;
+    }
     
-    function draw(data){
+
+    function setChart(ohlcData){
     
+        resetChart();
+
         var cAccessor = candlestick.accessor();
         var vAccessor = volume.accessor();
 
-        data = data.forEach(function(d) {
-                const date = parseDate(d[0]);
-                const open = d[1];
-                const high = d[2];
-                const low =  d[3];
-                const close = d[4];
-                const volume = d[5];
-
-                var modifiedDattum = {
-                    Date: date,
-                    Open: open, 
-                    High: high, 
-                    Low: low, 
-                    Close: close, 
-                    Volume: volume
-                }
-
-                ohlcData.push(modifiedDattum);
-
-        });
-
         ohlcData = ohlcData.slice(ohlcData, ohlcData.length).map(function(d){
+            
             return {
-                date: parseDate(d.Date),
-                open: +d.Open,
-                high: +d.High,
-                low: +d.Low,
-                close: +d.Close,
-                volume: +d.Volume
+                date: d.date,
+                open: +d.open,
+                high: +d.high,
+                low: +d.low,
+                close: +d.close,
+                volume: +d.vol
             };
         }).sort(function(a, b) { return d3.ascending(cAccessor.d(a), cAccessor.d(b)); });
 
 
-        x.domain(ohlcData.map(cAccessor.d));
-        y.domain(techan.scale.plot.ohlc(data, cAccessor).domain());
+        //x.domain(ohlcData.map(cAccessor.d));
+        x.domain(techan.scale.plot.time(ohlcData).domain())
+        y.domain(techan.scale.plot.ohlc(ohlcData.slice(ohlcData.length/4)).domain());
+        yPercent.domain(techan.scale.plot.ohlc(ohlcData, cAccessor).domain());
         yVolume.domain(techan.scale.plot.volume(ohlcData, vAccessor.v).domain());
-
+        
         svg.append("g")
             .attr("class", "x axis")
             .attr("transform", "translate(0," + dim.height + ")")
-            .call(xAxis);
-
+            //.call(xAxis);
 
         ohlcSelection.append("g")
             .attr("class", "volume")
@@ -253,49 +497,73 @@
             .attr("clip-path", "url(#ohlcClip)")
             .data([ohlcData])
             .call(candlestick);
+        
+        ohlcSelection.append("g")
+            .attr("class", "indicator sma ma-0")
+            .attr("clip-path", "url(#ohlcClip)")
+            .data([techan.indicator.sma().period(10)(ohlcData)])
+            .call(sma0)
+        console.log([techan.indicator.sma().period(10)(ohlcData)])
+        /**
+        ohlcSelection.append("g")
+                .attr("class", "indicator sma ma-1")
+                .attr("clip-path", "url(#ohlcClip)")
+                .data()
 
+        ohlcSelection.append("g")
+                .attr("class", "indicator ema ma-2")
+                .attr("clip-path", "url(#ohlcClip)");
+**/
 
         ohlcSelection.append("g")
                         .attr("class", "volume axis")
-                        .call(volumeAxis);
-
-        ohlcSelection.append("g")
-            .attr("class", "volume axis");
-
+                       // .call(volumeAxis);
 
         svg.append("g")
             .attr("class", "y axis")
-            .call(yAxis);
-        /*
-        svg.append("g")
-            .attr("class", "x annotation bottom")
-            .attr("transform", "translate(0," + 30 + ")")
-            .data([[data[30]]])
-            .call(timeAnnotation)
-        */
+            //.call(yAxis);
+       
 
         svg.append("g")
             .attr("class", "crosshair ohlc")
-            .call(ohlcCrosshair);
+            .call(ohlcCrosshair)
+            .call(zoom);
 
-        svg.append("g")
-            .attr("class", "test")
-            .attr("x", 30)
-            .attr("y", 100)
-            //.data([data])
-            
-        /*
-        svg.append("g")
-            .attr("class", "ohlc")
-            .attr("transform", "translate(50," + 20 + ")")
-            .append("text")
-            .text("open: " + data[30].open
-                    + " high: " + data[30].high
-                    + " low: " + data[30].low
-                    + " close: " + data[30].close);
-            */
+        
+        zoomableInit = x.zoomable().domain([ohlcData.length/4*3, ohlcData.length]).copy()
+        yInit = y.copy();
+        yPercentInit = yPercent.copy();
+        
+        draw();
+
     }
 
+    function resetChart(){
+        svg.select("g.candlestick").remove();
+        svg.select("g.x.axis").remove();
+        svg.select("g.y.axis").remove();
+        svg.select("g.volume").remove();
+        svg.select("g.volume.axis").remove();
+        svg.select("g .sma.ma-0").remove();
+        //svg.select("g .sma.ma-1").remove();
+        //svg.select("g .ema.ma-2").remove();
+    }
+
+
+    function draw(){
+        svg.select("g.x.axis").call(xAxis);
+        svg.select("g.candlestick").call(candlestick.refresh);
+        svg.select("g.y.axis").call(yAxis);
+        svg.select("g .sma.ma-0").call(sma0.refresh);
+        //svg.select("g .sma.ma-1").call(sma1.refresh);
+        //svg.select("g .ema.ma-2").call(ema2.refresh);
+        svg.select("g.volume").call(volume.refresh);
+        svg.select("g.volume.axis").call(volumeAxis);
+        svg.select("g.crosshair.ohlc").call(ohlcCrosshair.refresh);
+        
+    }
+
+    
     function move(coords){
         
         const ohlc = ohlcData.find(i => i.date == coords.x);
@@ -305,8 +573,9 @@
             " H: " + ohlc.high +
             " L: " + ohlc.low + 
             " C: " + ohlc.close + 
-            "    V: " + ohlc.volume
-        );
+            "    V: " + ohlc.vol +
+            "    Date: " + parseDate(ohlc.date)
+            );
     }
 
 </script>
