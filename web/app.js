@@ -47,6 +47,8 @@ const table = ["price_1min", "price_1hour"];
 app.get('/test', (req, res) => {
   
   const term = req.query.term;
+  const fromDate = req.query.fromDate;
+  const toDate = req.query.toDate;
   var selectedTable;
   
   if(term == "min"){
