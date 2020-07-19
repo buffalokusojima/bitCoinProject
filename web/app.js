@@ -42,7 +42,7 @@ var con = mysql.createConnection({
   insecureAuth: DB_INFO.insecureAuth
 });
 
-const table = ["price_1min", "price_1hour"];
+const table = ["price_bitstamp_btcusd_1min", "price_bitstamp_btcusd_1hour"];
 
 app.get('/test', (req, res) => {
   

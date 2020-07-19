@@ -28,7 +28,7 @@ class DbDataController():
             return None
 
         dbInfo = None
-        with open("./dbContorol/dbPath.json", 'r') as f:
+        with open("./dbControl/dbPath.json", 'r') as f:
             filePath = json.load(f)
             with open(filePath['filePath'], 'r') as f:
                 dbInfo = json.load(f)
