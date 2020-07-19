@@ -457,7 +457,7 @@
 
         var request = new XMLHttpRequest();
 
-        request.open('GET', 'http://localhost:3000/test?term='+obj.term+'&fromDate='+obj.fromDate+'&toDate='+obj.toDate);
+        request.open('GET', 'http://192.168.0.7:3000/test?term='+obj.term+'&fromDate='+obj.fromDate+'&toDate='+obj.toDate);
         request.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
 
         request.onload = function(err){
