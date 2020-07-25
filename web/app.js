@@ -37,14 +37,6 @@ app.use('/', indexRouter);
 
 var mysql = require('mysql2')
 
-var con = mysql.createConnection({
-  host: DB_INFO.host,
-  user: DB_INFO.user,
-  password: DB_INFO.password,
-  database: DB_INFO.database,
-  insecureAuth: DB_INFO.insecureAuth
-});
-
 const table = ["price_bitstamp_btcusd_1min", "price_bitstamp_btcusd_1hour"];
 
 app.get('/test', (req, res) => {
@@ -105,6 +97,14 @@ app.get('/test', (req, res) => {
   tmpToDate = "'" +tmpToDate.getFullYear() + "-" + Number(tmpToDate.getMonth()+1) + "-" + tmpToDate.getDate() + "'";
   
   console.log(tmpToDate)
+
+  var con = mysql.createConnection({
+    host: DB_INFO.host,
+    user: DB_INFO.user,
+    password: DB_INFO.password,
+    database: DB_INFO.database,
+    insecureAuth: DB_INFO.insecureAuth
+  });
 
   var sql = "SELECT * from " + selectedTable + " WHERE date BETWEEN "
           + tmpFromDate + " AND " + tmpToDate;
