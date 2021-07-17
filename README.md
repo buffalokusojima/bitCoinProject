@@ -18,7 +18,7 @@ type `localhost:3000` to see like below
 
 ## Hope you can make it But ...
 
-Before these steps you need to create mysql DB with `trade.sql`
+Before these steps you need to create mysql DB with `trade.sql`, which you can download from here https://oshonkoponpon.s3.ap-northeast-1.amazonaws.com/trade.sql
 And need to create `dbInfo.json` like below
 ```json
 {
